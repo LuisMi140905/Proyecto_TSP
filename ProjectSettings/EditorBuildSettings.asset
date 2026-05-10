@@ -5,9 +5,24 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: "Assets/Scenes/Men\xFAInicio.unity"
+    guid: 100e87432ad4d7a4c897c285cb327e00
+  - enabled: 1
+    path: Assets/Scenes/Laberinto.unity
+    guid: d708631f81a68464e8135af8a8a6e737
+  - enabled: 1
+    path: Assets/Scenes/Historia.unity
+    guid: 67e141218567bc344a550b9d67ff656f
+  - enabled: 1
+    path: Assets/Scenes/GameOver.unity
+    guid: 0ca2668ffce91944da43a190996bb48f
+  - enabled: 1
+    path: Assets/Scenes/Opciones.unity
+    guid: 33b5e020f1474e4418ea64a902a5146f
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
