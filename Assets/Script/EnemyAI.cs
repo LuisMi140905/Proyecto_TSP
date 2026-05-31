@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
+
 public class EnemyAI : MonoBehaviour
 {
     [Header("Detección")]
@@ -20,6 +21,13 @@ public class EnemyAI : MonoBehaviour
     public float chaseSpeed = 3.5f;
     public float patrolSpeed = 1.8f;
 
+    [Header("Audio del Minotauro")]
+    public AudioSource bocinaMinotauro;
+    public AudioClip sonidoQuieto;
+    public AudioClip sonidoCaminando;
+    public AudioClip sonidoPersecucion;
+    public AudioClip sonidoAtaque;
+
     private NavMeshAgent agent;
     private Animator anim;
     private Transform targetPlayer;
@@ -27,13 +35,12 @@ public class EnemyAI : MonoBehaviour
     private float waitTimer;
     private float memoryTimer;
     private bool isCatching = false;
+    private AudioClip sonidoActual; // Para evitar que el audio tartamudee
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         anim = GetComponentInChildren<Animator>();
-
-        // Busca automáticamente al jugador por su Tag
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null) targetPlayer = playerObj.transform;
     }
@@ -46,62 +53,126 @@ public class EnemyAI : MonoBehaviour
 
         float distanceToPlayer = Vector3.Distance(transform.position, targetPlayer.position);
 
-        // Lógica de Atrapado
+        // ESTADO 1: Atrapando al jugador (AÑADIDO RAYCAST PARA EVITAR ATRAVESAR PAREDES)
         if (distanceToPlayer < detectionRange)
         {
-            CatchPlayer();
-            return;
+            Vector3 dirToPlayer = (targetPlayer.position - transform.position).normalized;
+            // Solo te atrapa si no hay una pared (obstacleMask) entre ustedes
+            if (!Physics.Raycast(transform.position + Vector3.up, dirToPlayer, distanceToPlayer, obstacleMask))
+            {
+                CatchPlayer();
+                return;
+            }
         }
 
-        // Lógica de Máquina de Estados
+        // ESTADO 2: Persiguiendo
         if (CanSeePlayer())
         {
             agent.isStopped = false;
             agent.speed = chaseSpeed;
             agent.SetDestination(targetPlayer.position);
             memoryTimer = memoryTime;
+            GestionarSonido(sonidoPersecucion);
         }
+        // ESTADO 3: Buscando
         else if (memoryTimer > 0)
         {
             memoryTimer -= Time.deltaTime;
-            if (!agent.pathPending && agent.remainingDistance < 1.5f)
-            {
-                memoryTimer = 0;
-            }
+            if (!agent.pathPending && agent.remainingDistance < 1.5f) memoryTimer = 0;
+            GestionarSonido(sonidoPersecucion);
         }
+        // ESTADO 4: Patrullando o Quieto
         else
         {
             PerformPatrol();
+            if (agent.velocity.magnitude < 0.1f) GestionarSonido(sonidoQuieto);
+            else GestionarSonido(sonidoCaminando);
+        }
+    }
+
+    private void GestionarSonido(AudioClip clipDeseado)
+    {
+        if (bocinaMinotauro != null && clipDeseado != null)
+        {
+            // Solo reinicia el clip si es diferente al que ya está sonando
+            if (sonidoActual != clipDeseado)
+            {
+                sonidoActual = clipDeseado;
+                bocinaMinotauro.clip = clipDeseado;
+                bocinaMinotauro.Play();
+            }
         }
     }
 
     private void CatchPlayer()
     {
         isCatching = true;
-        agent.isStopped = true;
+        agent.isStopped = true; // Se detiene para atacar
         agent.ResetPath();
 
+        Vector3 lookDir = targetPlayer.position - transform.position;
+        lookDir.y = 0;
+        transform.rotation = Quaternion.LookRotation(lookDir);
+
+        // Disparamos la animación
         if (anim != null) anim.SetTrigger("Attack");
 
-        // Le avisa al GameManager que reinicie el nivel después de 1.5 segundos
-        GameManager.Instance.ResetLevel(targetPlayer.gameObject, 1.5f);
+        GestionarSonido(sonidoAtaque);
+
+        // El PlayerManager ahora se encarga de esperar los 1.5s y resetear
+        PlayerManager pm = targetPlayer.GetComponent<PlayerManager>();
+        if (pm != null) pm.IniciarJumpscare(transform);
     }
 
-    public void ResetPosition(Vector3 entrancePos)
+    [Header("Generación Aleatoria")]
+    public float radioDelLaberinto = 100f; // Ajusta esto al tamaño total de tu laberinto
+    public float distanciaSegura = 20f;    // Qué tan lejos debe aparecer del jugador como mínimo
+
+    public void ResetPositionRandom()
     {
         agent.enabled = false;
 
-        // Lo mandamos a un punto aleatorio lejos de la entrada
-        Vector3 randomPos = Random.insideUnitSphere * 50f;
-        randomPos += entrancePos;
-        NavMesh.SamplePosition(randomPos, out NavMeshHit hit, 50f, NavMesh.AllAreas);
-        transform.position = hit.position;
+        Vector3 puntoFinal = transform.position; // Fallback por si acaso
+        bool puntoEncontrado = false;
+
+        // Intentamos hasta 10 veces encontrar un buen punto aleatorio
+        for (int i = 0; i < 10; i++)
+        {
+            // Tomamos un punto al azar dentro de una esfera del tamaño del laberinto
+            Vector3 randomPos = Random.insideUnitSphere * radioDelLaberinto;
+            randomPos.y = transform.position.y; // Mantenemos la altura
+
+            // Verificamos si ese punto cae en el suelo navegable (NavMesh)
+            if (NavMesh.SamplePosition(randomPos, out NavMeshHit hit, radioDelLaberinto, NavMesh.AllAreas))
+            {
+                // Filtro de seguridad: ¿Está lo bastante lejos del jugador?
+                if (Vector3.Distance(hit.position, targetPlayer.position) > distanciaSegura)
+                {
+                    puntoFinal = hit.position;
+                    puntoEncontrado = true;
+                    break; // Encontramos un buen punto, salimos del bucle
+                }
+            }
+        }
+
+        if (puntoEncontrado)
+        {
+            transform.position = puntoFinal;
+        }
+        else
+        {
+            Debug.LogWarning("No se encontró un punto lejano, se queda en su última posición.");
+        }
 
         agent.enabled = true;
+        agent.isStopped = false; // ¡Libera al minotauro!
         agent.ResetPath();
         agent.speed = patrolSpeed;
         memoryTimer = 0;
         isCatching = false;
+        sonidoActual = null;
+
+        if (anim != null) anim.Play("Idle");
     }
 
     private void PerformPatrol()
