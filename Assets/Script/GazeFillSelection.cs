@@ -57,7 +57,7 @@ public sealed class GazeFillSelection : MonoBehaviour
                 yield break;
             }
 
-            elapsedTime += Time.deltaTime;
+            elapsedTime += Time.unscaledDeltaTime;
 
             if (radialImage != null)
             {
