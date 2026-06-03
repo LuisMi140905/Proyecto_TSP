@@ -10,7 +10,10 @@ public sealed class SceneNavigator : MonoBehaviour
     // Esto se ejecuta al instante en cuanto abres el juego
     void Start()
     {
-        // Si el usuario no ha dado permiso de cámara...
+        // 1. Blindaje: Aseguramos que el motor de físicas y animaciones corra a velocidad normal
+        Time.timeScale = 1f;
+
+        // 2. Si el usuario no ha dado permiso de cámara...
         if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
         {
             // ...se lo pedimos con la ventanita típica de Android
