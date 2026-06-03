@@ -1,20 +1,27 @@
 using UnityEngine;
 using Firebase.Database;
 using Firebase.Extensions;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
+    [Header("Datos del Jugador")]
+    // Aquí está tu variable libre. Tiene "Invitado" por defecto por si juegan sin poner nombre.
+    public string nombreActualJugador = "Invitado";
+
     [Header("Configuración de Nivel")]
     public Transform exit;
-    public Transform entrance; // Para reiniciar al jugador si lo atrapan
+    public Transform entrance;
     public bool gameWon = false;
 
-    // Tu referencia a la base de datos
+    [Header("Nombres de Escenas (Videos)")]
+    public string escenaVictoria = "Salida";
+    public string escenaDerrota = "Perdiste";
+
     private DatabaseReference reference;
 
-    // Estructura para el objeto complejo, similar a tu clase "Usuario"
     [System.Serializable]
     public class RecordJugador
     {
@@ -30,7 +37,6 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
-        // Singleton para asegurar que solo haya un GameManager
         if (Instance == null)
         {
             Instance = this;
@@ -40,74 +46,88 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
 
-        // Apuntamos a la raíz de tu base de datos Firebase
         reference = FirebaseDatabase.DefaultInstance.RootReference;
     }
 
-    // Esta función se llama desde el script de la salida cuando el jugador la toca
+    // --- NUEVA FUNCIÓN PARA EL FUTURO ---
+    // Cuando hagas tu Canvas para pedir el nombre, conecta el evento "On End Edit" del InputField a esta función.
+    public void EstablecerNombreJugador(string nombre)
+    {
+        if (!string.IsNullOrEmpty(nombre))
+        {
+            nombreActualJugador = nombre;
+        }
+    }
+    // ------------------------------------
+
     public void WinGame()
     {
         if (gameWon) return;
         gameWon = true;
 
-        // Calculamos el tiempo que le tomó escapar
         float tiempoFinal = Time.timeSinceLevelLoad;
-        Debug.Log("¡Escapaste! Tiempo: " + tiempoFinal + " segundos.");
+        Debug.Log("¡Escapaste! Tiempo: " + tiempoFinal + " segundos. Jugador: " + nombreActualJugador);
 
-        // Subimos el récord (puedes cambiar "Jugador_1" por una variable si haces un menú de inicio)
-        SubirRecord("Jugador_1", tiempoFinal);
+        // Ahora usamos la variable en lugar del texto fijo "Jugador_1"
+        SubirRecord(nombreActualJugador, tiempoFinal);
     }
 
     private void SubirRecord(string nombre, float tiempo)
     {
-        // 1. Creamos el registro del objeto tipo RecordJugador
         RecordJugador nuevoRecord = new RecordJugador(nombre, tiempo);
-
-        // 2. Convertimos el objeto a JSON
         string json = JsonUtility.ToJson(nuevoRecord);
-
-        // 3. Generamos una clave única en el nodo "RecordsLaberinto"
         string key = reference.Child("RecordsLaberinto").Push().Key;
 
-        // 4. Enviamos el JSON a Firebase de forma asíncrona
         reference.Child("RecordsLaberinto").Child(key).SetRawJsonValueAsync(json).ContinueWithOnMainThread(task =>
         {
             if (task.IsCompleted)
             {
-                // Confirmación idéntica a la de tu consola en la práctica
-                Debug.Log("Dato registrado tipo objeto JSON: " + json);
+                Debug.Log("Dato registrado en Firebase: " + json);
+                SceneManager.LoadScene(escenaVictoria);
             }
             else if (task.IsFaulted)
             {
-                Debug.LogError("Error al registrar el tiempo en Firebase.");
+                Debug.LogError("Error al registrar en Firebase. Cargando escena por seguridad...");
+                SceneManager.LoadScene(escenaVictoria);
             }
         });
     }
 
-    // Función auxiliar que usa el Minotauro para reiniciar el nivel
     public void ResetLevel(GameObject player, float delay)
     {
-        Invoke(nameof(ReiniciarPosicion), delay);
+        // Usamos una corrutina en lugar de Invoke para ignorar pausas de tiempo
+        StartCoroutine(RutinaReinicioNivel(delay));
     }
 
-    private void ReiniciarPosicion()
+    private System.Collections.IEnumerator RutinaReinicioNivel(float delay)
     {
-        // Reiniciamos todo para un nuevo intento
+        yield return new WaitForSecondsRealtime(delay);
+
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null && entrance != null)
         {
+            // Apagamos momentáneamente el CharacterController (o Rigidbody) si tienes uno para evitar conflictos de físicas al teletransportar
+            CharacterController cc = playerObj.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+
             playerObj.transform.position = entrance.position;
-            
-            // Reactivamos el movimiento
-            ControladorVR scriptMovimiento = playerObj.GetComponent<ControladorVR>();
-            if (scriptMovimiento != null) scriptMovimiento.enabled = true;
+
+            // Si tenías un controlador VR apagado, lo prendemos
+            //ControladorVR scriptMovimiento = playerObj.GetComponent<ControladorVR>();
+            //if (scriptMovimiento != null) scriptMovimiento.enabled = true;
+
+            if (cc != null) cc.enabled = true;
         }
 
-        // Devolvemos al Minotauro a su guardia
         EnemyAI minotauro = Object.FindFirstObjectByType<EnemyAI>();
         if (minotauro != null)
         {
             minotauro.ResetPositionRandom();
         }
+    }
+
+    private void CargarEscenaPerdiste()
+    {
+        SceneManager.LoadScene(escenaDerrota);
     }
 }

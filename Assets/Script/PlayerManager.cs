@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement; // <-- IMPORTANTE: Librería para cambiar de escena
 
 public class PlayerManager : MonoBehaviour
 {
@@ -75,23 +76,38 @@ public class PlayerManager : MonoBehaviour
         else
         {
             // GAME OVER DEFINITIVO
-            Debug.Log("GAME OVER");
-            // Aquí puedes llamar a tu GameManager.Instance.LoseGame(); o cargar menú
+            Debug.Log("GAME OVER. Cargando escena de derrota...");
+            // Le pedimos al GameManager el nombre de la escena para no hardcodearlo aquí
+            SceneManager.LoadScene(GameManager.Instance.escenaDerrota);
         }
     }
 
     private void RestablecerPosiciones()
     {
-        // Movemos al jugador
-        transform.position = puntoReaparicionJugador.position;
-        transform.rotation = puntoReaparicionJugador.rotation;
+        // 1. Apagamos el CharacterController si existe (es el principal bloqueador de teletransportes en RV)
+        CharacterController cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
 
-        // Reactivamos físicas y movimiento
+        // 2. Movemos al jugador (Verificando que la variable no esté vacía)
+        if (puntoReaparicionJugador != null)
+        {
+            transform.position = puntoReaparicionJugador.position;
+            transform.rotation = puntoReaparicionJugador.rotation;
+        }
+        else
+        {
+            Debug.LogError("¡ERROR! Falta arrastrar el objeto de Inicio a la casilla 'Punto Reaparicion Jugador' en el Inspector.");
+        }
+
+        // 3. Reactivamos físicas y movimiento
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = false;
+
+        if (cc != null) cc.enabled = true; // Prendemos el CharacterController de nuevo
+
         if (scriptMovimiento != null) scriptMovimiento.enabled = true;
 
-        // --- NUEVO: Mandamos al minotauro a un punto aleatorio ---
+        // 4. Mandamos al minotauro a un punto aleatorio
         if (scriptMinotauro != null)
         {
             scriptMinotauro.ResetPositionRandom();

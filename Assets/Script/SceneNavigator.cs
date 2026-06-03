@@ -1,10 +1,22 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Android; // <-- Necesario para pedir permisos en Android
 
 public sealed class SceneNavigator : MonoBehaviour
 {
     private Coroutine loadSceneCoroutine;
+
+    // Esto se ejecuta al instante en cuanto abres el juego
+    void Start()
+    {
+        // Si el usuario no ha dado permiso de cámara...
+        if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
+        {
+            // ...se lo pedimos con la ventanita típica de Android
+            Permission.RequestUserPermission(Permission.Camera);
+        }
+    }
 
     public void LoadSceneByName(string sceneName)
     {

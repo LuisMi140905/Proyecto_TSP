@@ -5,9 +5,6 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
     path: "Assets/Scenes/Men\xFAInicio.unity"
     guid: 100e87432ad4d7a4c897c285cb327e00
@@ -18,14 +15,17 @@ EditorBuildSettings:
     path: Assets/Scenes/Historia.unity
     guid: 67e141218567bc344a550b9d67ff656f
   - enabled: 1
-    path: Assets/Scenes/GameOver.unity
-    guid: 0ca2668ffce91944da43a190996bb48f
-  - enabled: 1
     path: Assets/Scenes/CargaInstrucciones.unity
     guid: 509f17888b14fb94aa610b65f277fb8b
   - enabled: 1
     path: Assets/Scenes/EscenaMarcadores.unity
     guid: adadc5a12a7e83148a8d7bd0b67243d8
+  - enabled: 1
+    path: Assets/Scenes/Perdiste.unity
+    guid: 12beabc9c44e6244d84395646cc3eb24
+  - enabled: 1
+    path: Assets/Scenes/Salida.unity
+    guid: 126133ba9ff459f41a80780c73c688b1
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 87f7e5d11ff64524484f1f49dc6722ec, type: 2}
